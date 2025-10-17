@@ -30,9 +30,9 @@ class ProtectRevealClient:
     def __init__(self, host: str, port: int, policy: str, timeout: int = 10):
         self.base_url = f"http://{host}:{port}"
         self.protect_url = urljoin(self.base_url, "/v1/protect")
-        self.protect_bulk_url = urljoin(self.base_url, "/v1/protect/bulk")
+    self.protect_bulk_url = urljoin(self.base_url, "/v1/protectbulk")
         self.reveal_url = urljoin(self.base_url, "/v1/reveal")
-        self.reveal_bulk_url = urljoin(self.base_url, "/v1/reveal/bulk")
+    self.reveal_bulk_url = urljoin(self.base_url, "/v1/revealbulk")
         self.policy = policy
         self.timeout = timeout
         self.session = requests.Session()

@@ -103,7 +103,9 @@ class ProtectRevealClient:
         """Initialize the client with API configuration."""
         self.base_url = f"http://{host}:{port}"
         self.protect_url = urljoin(self.base_url, "/v1/protect")
+    self.protect_bulk_url = urljoin(self.base_url, "/v1/protectbulk")
         self.reveal_url = urljoin(self.base_url, "/v1/reveal")
+    self.reveal_bulk_url = urljoin(self.base_url, "/v1/revealbulk")
         self.policy = policy
         self.timeout = timeout
         self.session = requests.Session()
@@ -124,6 +126,60 @@ class ProtectRevealClient:
             body = resp.text
 
         return APIResponse(resp.status_code, body)
+
+    # Bulk helpers (mirror package client)
+    def protect_bulk(self, items: list) -> APIResponse:
+        payload = {"protection_policy_name": self.policy, "data": items}
+        return self.post_json(self.protect_bulk_url, payload)
+
+    def reveal_bulk(self, protected_items: list) -> APIResponse:
+        payload = {"protection_policy_name": self.policy, "protected_data": protected_items}
+        return self.post_json(self.reveal_bulk_url, payload)
+
+    def extract_protected_list_from_protect_response(self, response: APIResponse) -> list:
+        if response is None or response.body is None:
+            return []
+        body = response.body
+        if isinstance(body, list):
+            return [str(x) for x in body]
+        if isinstance(body, dict):
+            if "protected_data" in body and isinstance(body["protected_data"], list):
+                return [str(x) for x in body["protected_data"]]
+            if "results" in body and isinstance(body["results"], list):
+                out = []
+                for item in body["results"]:
+                    if isinstance(item, dict) and "protected_data" in item:
+                        out.append(str(item.get("protected_data")))
+                return out
+        return []
+
+    def extract_restored_list_from_reveal_response(self, response: APIResponse) -> list:
+        if response is None or response.body is None:
+            return []
+        body = response.body
+        if isinstance(body, list):
+            return [str(x) for x in body]
+        if isinstance(body, dict):
+            for key in ("data", "restored", "results", "items"):
+                if key in body:
+                    val = body[key]
+                    if isinstance(val, list):
+                        return [str(x) for x in val]
+                    if key == "results" and isinstance(val, list):
+                        out = []
+                        for item in val:
+                            if isinstance(item, dict):
+                                for k in ("data", "restored", "value"):
+                                    if k in item:
+                                        out.append(str(item.get(k)))
+                                        break
+                        return out
+            out = []
+            for v in body.values():
+                if isinstance(v, (str, int)):
+                    out.append(str(v))
+            return out
+        return []
     
     def extract_protected_from_protect_response(self, response: APIResponse) -> Optional[str]:
         """Extract the protected token from a protect response."""
