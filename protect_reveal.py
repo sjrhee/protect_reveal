@@ -63,6 +63,8 @@ class Config:
     verbose: bool = False
     show_bodies: bool = False
     show_progress: bool = False
+    bulk: bool = False
+    batch_size: int = 10
     
     @classmethod
     def from_args(cls, argv: Optional[list] = None) -> 'Config':
@@ -87,6 +89,8 @@ class Config:
         parser.add_argument("--show-progress", action="store_true", 
                    dest="show_progress", 
                    help="show per-iteration progress output")
+        parser.add_argument("--bulk", action="store_true", help="use bulk protect/reveal endpoints")
+        parser.add_argument("--batch-size", default=10, type=int, help="batch size for bulk operations (default 10)")
 
         args = parser.parse_args(argv)
         return cls(**vars(args))
@@ -215,6 +219,28 @@ def main(argv: Optional[list] = None) -> int:
         policy=config.policy,
         timeout=config.timeout
     )
+
+    # If bulk mode is enabled, use the bulk runner
+    if config.bulk:
+        from protect_reveal.runner import run_bulk_iteration
+
+        # build list of inputs from start_data and iterations
+        inputs = []
+        cur = config.start_data
+        for _ in range(config.iterations):
+            inputs.append(cur)
+            try:
+                cur = increment_numeric_string(cur)
+            except Exception:
+                break
+
+        bulk_results = run_bulk_iteration(client, inputs, batch_size=config.batch_size)
+
+        # Summary per batch
+        for idx, b in enumerate(bulk_results, start=1):
+            logger.info("Batch #%d: items=%d time=%.4fs protect_status=%s reveal_status=%s matches=%d/%d", idx, len(b.inputs), b.time_s, getattr(b.protect_response, 'status_code', 'N/A'), getattr(b.reveal_response, 'status_code', 'N/A'), sum(1 for m in b.matches if m), len(b.inputs))
+
+        return 0
 
     current = config.start_data
     results: list[IterationResult] = []
