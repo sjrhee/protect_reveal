@@ -105,37 +105,6 @@ python3 protect_reveal.py --iterations 10 --verbose --show-bodies
 python3 protect_reveal.py --policy CustomPolicy --start-data 9876543210
 ```
 
-## 라이브러리로 사용
-
-```python
-from protect_reveal import ProtectRevealClient, APIError, run_iteration
-
-# 클라이언트 초기화
-try:
-    client = ProtectRevealClient(
-        host="api.example.com",
-        port=8443,
-        policy="CustomPolicy"
-    )
-    
-    # 단일 protect/reveal 수행
-    result = run_iteration(client, "0123456789123456")
-    
-    # 결과 확인
-    if result.success:
-        print(f"Protected: {result.protected_token}")
-        print(f"Restored: {result.restored}")
-        print(f"Time: {result.time_s:.4f}s")
-    else:
-        print("Operation failed:")
-        print(f"Protect status: {result.protect_response.status_code}")
-        print(f"Reveal status: {result.reveal_response.status_code}")
-
-except APIError as e:
-    print(f"API error: {e}")
-    print(f"Status code: {e.status_code}")
-```
-
 ## 에러 처리
 
 라이브러리는 다음과 같은 예외를 발생시킬 수 있습니다:
