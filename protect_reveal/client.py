@@ -30,9 +30,9 @@ class ProtectRevealClient:
     def __init__(self, host: str, port: int, policy: str, timeout: int = 10):
         self.base_url = f"http://{host}:{port}"
         self.protect_url = urljoin(self.base_url, "/v1/protect")
-    self.protect_bulk_url = urljoin(self.base_url, "/v1/protectbulk")
+        self.protect_bulk_url = urljoin(self.base_url, "/v1/protectbulk")
         self.reveal_url = urljoin(self.base_url, "/v1/reveal")
-    self.reveal_bulk_url = urljoin(self.base_url, "/v1/revealbulk")
+        self.reveal_bulk_url = urljoin(self.base_url, "/v1/revealbulk")
         self.policy = policy
         self.timeout = timeout
         self.session = requests.Session()
@@ -41,27 +41,55 @@ class ProtectRevealClient:
     def post_json(self, url: str, payload: Dict[str, Any]) -> APIResponse:
         try:
             resp = self.session.post(url, json=payload, timeout=self.timeout)
-            resp.raise_for_status()
         except requests.RequestException as exc:
-            status = getattr(exc.response, "status_code", None)
-            raise APIError(str(exc), status_code=status, response=getattr(exc, "response", None))
+            # network-level error, try to return any attached response, else error text
+            resp = getattr(exc, 'response', None)
+            if resp is None:
+                return APIResponse(None, str(exc))
 
+        # At this point we have a Response object (may have non-2xx status)
+        status = getattr(resp, 'status_code', None)
         try:
             body = resp.json()
-        except ValueError:
-            body = resp.text
+        except Exception:
+            body = getattr(resp, 'text', None)
 
-        return APIResponse(resp.status_code, body)
+        return APIResponse(status, body)
 
     # Bulk helpers
     def protect_bulk(self, items: list) -> APIResponse:
         """Send a bulk protect request. Payload: {protection_policy_name, data: [ ... ]}"""
-        payload = {"protection_policy_name": self.policy, "data": items}
+        # include both common and Thales-style keys for compatibility
+        payload = {"protection_policy_name": self.policy, "data": items, "data_array": items}
         return self.post_json(self.protect_bulk_url, payload)
 
-    def reveal_bulk(self, protected_items: list) -> APIResponse:
-        """Send a bulk reveal request. Payload: {protection_policy_name, protected_data: [ ... ]}"""
-        payload = {"protection_policy_name": self.policy, "protected_data": protected_items}
+    def reveal_bulk(self, protected_items: list, username: Optional[str] = None) -> APIResponse:
+        """Send a bulk reveal request.
+
+        protected_items may be a list of strings (tokens) or a list of dicts
+        containing at least the key 'protected_data' and optionally keys like
+        'external_version'. The payload will include both compatibility keys
+        ('protected_data', 'protected_array') and the Thales-style
+        'protected_data_array'. If username is provided it will be added to
+        the request body.
+        """
+        # Build protected_data_array preserving any extra fields per-item
+        pda = []
+        for p in protected_items:
+            if isinstance(p, dict):
+                # assume it already has 'protected_data' and possibly 'external_version'
+                pda.append(p)
+            else:
+                pda.append({"protected_data": p})
+
+        # include multiple possible keys to match different server implementations
+        # protected_data / protected_array keep the old simple list form
+        simple_list = [item.get("protected_data") if isinstance(item, dict) else str(item) for item in pda]
+        payload: Dict[str, Any] = {"protection_policy_name": self.policy, "protected_data": simple_list, "protected_array": simple_list}
+        payload["protected_data_array"] = pda
+        if username:
+            payload["username"] = username
+
         return self.post_json(self.reveal_bulk_url, payload)
 
     def extract_protected_list_from_protect_response(self, response: APIResponse) -> list:
@@ -80,6 +108,13 @@ class ProtectRevealClient:
         if isinstance(body, dict):
             if "protected_data" in body and isinstance(body["protected_data"], list):
                 return [str(x) for x in body["protected_data"]]
+            # Thales style: protected_data_array -> list of {protected_data: value}
+            if "protected_data_array" in body and isinstance(body["protected_data_array"], list):
+                out = []
+                for item in body["protected_data_array"]:
+                    if isinstance(item, dict) and "protected_data" in item:
+                        out.append(str(item.get("protected_data")))
+                return out
             if "results" in body and isinstance(body["results"], list):
                 out = []
                 for item in body["results"]:
@@ -99,7 +134,7 @@ class ProtectRevealClient:
         if isinstance(body, list):
             return [str(x) for x in body]
         if isinstance(body, dict):
-            # direct list
+            # direct list or keyed list
             for key in ("data", "restored", "results", "items"):
                 if key in body:
                     val = body[key]
@@ -116,6 +151,15 @@ class ProtectRevealClient:
                                         out.append(str(item.get(k)))
                                         break
                         return out
+
+            # Thales-style: data_array -> list of {'data': value}
+            if 'data_array' in body and isinstance(body['data_array'], list):
+                out = []
+                for item in body['data_array']:
+                    if isinstance(item, dict) and 'data' in item:
+                        out.append(str(item.get('data')))
+                return out
+
             # fallback: if dict maps tokens->values
             out = []
             for v in body.values():

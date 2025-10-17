@@ -103,48 +103,63 @@ class ProtectRevealClient:
         """Initialize the client with API configuration."""
         self.base_url = f"http://{host}:{port}"
         self.protect_url = urljoin(self.base_url, "/v1/protect")
-    self.protect_bulk_url = urljoin(self.base_url, "/v1/protectbulk")
+        self.protect_bulk_url = urljoin(self.base_url, "/v1/protectbulk")
         self.reveal_url = urljoin(self.base_url, "/v1/reveal")
-    self.reveal_bulk_url = urljoin(self.base_url, "/v1/revealbulk")
+        self.reveal_bulk_url = urljoin(self.base_url, "/v1/revealbulk")
         self.policy = policy
         self.timeout = timeout
         self.session = requests.Session()
         self.session.headers.update({"Content-Type": "application/json"})
         
     def post_json(self, url: str, payload: Dict[str, Any]) -> APIResponse:
-        """POST JSON to url and return APIResponse."""
+        """POST JSON to url and return APIResponse.
+
+        Do not raise on HTTP error statuses; instead return an APIResponse with
+        status_code and body when available so callers can inspect 4xx/5xx bodies.
+        """
         try:
             resp = self.session.post(url, json=payload, timeout=self.timeout)
-            resp.raise_for_status()
         except requests.RequestException as exc:
-            status = getattr(exc.response, "status_code", None)
-            raise APIError(str(exc), status_code=status, response=exc.response)
+            resp = getattr(exc, 'response', None)
+            if resp is None:
+                return APIResponse(None, str(exc))
 
+        status = getattr(resp, 'status_code', None)
         try:
             body = resp.json()
-        except ValueError:
-            body = resp.text
+        except Exception:
+            body = getattr(resp, 'text', None)
 
-        return APIResponse(resp.status_code, body)
+        return APIResponse(status, body)
 
     # Bulk helpers (mirror package client)
     def protect_bulk(self, items: list) -> APIResponse:
-        payload = {"protection_policy_name": self.policy, "data": items}
+        payload = {"protection_policy_name": self.policy, "data": items, "data_array": items}
         return self.post_json(self.protect_bulk_url, payload)
 
     def reveal_bulk(self, protected_items: list) -> APIResponse:
-        payload = {"protection_policy_name": self.policy, "protected_data": protected_items}
+        payload = {"protection_policy_name": self.policy, "protected_data": protected_items, "protected_array": protected_items}
+        payload['protected_data_array'] = [{"protected_data": p} for p in protected_items]
         return self.post_json(self.reveal_bulk_url, payload)
 
     def extract_protected_list_from_protect_response(self, response: APIResponse) -> list:
         if response is None or response.body is None:
             return []
         body = response.body
+        # If body is a plain list of tokens
         if isinstance(body, list):
             return [str(x) for x in body]
+        # If body is a dict, check several possible shapes
         if isinstance(body, dict):
             if "protected_data" in body and isinstance(body["protected_data"], list):
                 return [str(x) for x in body["protected_data"]]
+            # Thales style: protected_data_array -> list of {protected_data: value}
+            if "protected_data_array" in body and isinstance(body["protected_data_array"], list):
+                out = []
+                for item in body["protected_data_array"]:
+                    if isinstance(item, dict) and "protected_data" in item:
+                        out.append(str(item.get("protected_data")))
+                return out
             if "results" in body and isinstance(body["results"], list):
                 out = []
                 for item in body["results"]:
@@ -160,20 +175,33 @@ class ProtectRevealClient:
         if isinstance(body, list):
             return [str(x) for x in body]
         if isinstance(body, dict):
+            # direct list or keyed list
             for key in ("data", "restored", "results", "items"):
                 if key in body:
                     val = body[key]
                     if isinstance(val, list):
                         return [str(x) for x in val]
+                    # results may be list of dicts
                     if key == "results" and isinstance(val, list):
                         out = []
                         for item in val:
                             if isinstance(item, dict):
+                                # try to find common fields
                                 for k in ("data", "restored", "value"):
                                     if k in item:
                                         out.append(str(item.get(k)))
                                         break
                         return out
+
+            # Thales-style: data_array -> list of {'data': value}
+            if 'data_array' in body and isinstance(body['data_array'], list):
+                out = []
+                for item in body['data_array']:
+                    if isinstance(item, dict) and 'data' in item:
+                        out.append(str(item.get('data')))
+                return out
+
+            # fallback: if dict maps tokens->values
             out = []
             for v in body.values():
                 if isinstance(v, (str, int)):
@@ -292,9 +320,35 @@ def main(argv: Optional[list] = None) -> int:
 
         bulk_results = run_bulk_iteration(client, inputs, batch_size=config.batch_size)
 
-        # Summary per batch
+        # Print per-batch JSON results in Thales-style format
         for idx, b in enumerate(bulk_results, start=1):
-            logger.info("Batch #%d: items=%d time=%.4fs protect_status=%s reveal_status=%s matches=%d/%d", idx, len(b.inputs), b.time_s, getattr(b.protect_response, 'status_code', 'N/A'), getattr(b.reveal_response, 'status_code', 'N/A'), sum(1 for m in b.matches if m), len(b.inputs))
+            # Protect-side summary (use server values when present)
+            pbody = getattr(b.protect_response, 'body', {}) or {}
+            rbody = getattr(b.reveal_response, 'body', {}) or {}
+
+            protect_obj = {
+                "status": pbody.get("status", "Success" if b.protect_response and b.protect_response.is_success else "Error"),
+                "total_count": pbody.get("total_count", len(b.inputs)),
+                "success_count": pbody.get("success_count", len(b.protected_tokens)),
+                "error_count": pbody.get("error_count", max(0, len(b.inputs) - len(b.protected_tokens))),
+            }
+            if config.show_bodies:
+                protect_obj["protected_data_array"] = [{"protected_data": tok} for tok in b.protected_tokens]
+
+            # Reveal-side summary (data_array)
+            reveal_obj = {
+                "status": rbody.get("status", "Success" if b.reveal_response and b.reveal_response.is_success else "Error"),
+                "total_count": rbody.get("total_count", len(b.inputs)),
+                "success_count": rbody.get("success_count", len(b.restored_values)),
+                "error_count": rbody.get("error_count", max(0, len(b.inputs) - len(b.restored_values))),
+            }
+            if config.show_bodies:
+                reveal_obj["data_array"] = [{"data": v} for v in b.restored_values]
+
+            out = {"batch": idx, "protect": protect_obj, "reveal": reveal_obj, "time_s": b.time_s}
+            # Do not print per-batch summaries unless show_bodies is enabled.
+            if config.show_bodies:
+                print(json.dumps(out, ensure_ascii=False, indent=2))
 
         return 0
 

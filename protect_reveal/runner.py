@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import Optional
 import time
 
-from .client import APIResponse, ProtectRevealClient
+from .client import APIResponse, ProtectRevealClient, APIError
 
 
 @dataclass
@@ -77,11 +77,39 @@ def run_bulk_iteration(client: ProtectRevealClient, inputs: list, batch_size: in
     for i in range(0, len(inputs), batch_size):
         batch = inputs[i : i + batch_size]
         t0 = time.perf_counter()
-        protect_resp = client.protect_bulk(batch)
+        # protect bulk: catch APIError and convert to APIResponse to continue processing
+        try:
+            protect_resp = client.protect_bulk(batch)
+        except APIError as err:
+            # try to extract body from response if available
+            resp = getattr(err, 'response', None)
+            body = None
+            status = getattr(err, 'status_code', None)
+            if resp is not None:
+                try:
+                    body = resp.json()
+                except Exception:
+                    body = getattr(resp, 'text', None)
+                status = getattr(resp, 'status_code', status)
+            protect_resp = APIResponse(status, body)
+
         protected_list = client.extract_protected_list_from_protect_response(protect_resp)
 
-        # reveal bulk expects list of protected tokens
-        reveal_resp = client.reveal_bulk(protected_list)
+        # reveal bulk expects list of protected tokens — handle APIError similarly
+        try:
+            reveal_resp = client.reveal_bulk(protected_list)
+        except APIError as err:
+            resp = getattr(err, 'response', None)
+            body = None
+            status = getattr(err, 'status_code', None)
+            if resp is not None:
+                try:
+                    body = resp.json()
+                except Exception:
+                    body = getattr(resp, 'text', None)
+                status = getattr(resp, 'status_code', status)
+            reveal_resp = APIResponse(status, body)
+
         restored_list = client.extract_restored_list_from_reveal_response(reveal_resp)
         t1 = time.perf_counter()
 
