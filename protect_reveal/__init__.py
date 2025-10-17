@@ -2,6 +2,7 @@
 from .client import ProtectRevealClient, APIResponse, APIError
 from .utils import increment_numeric_string
 from .runner import IterationResult, run_iteration
+from .runner import BulkIterationResult, run_bulk_iteration
 
 __all__ = [
     "ProtectRevealClient",
@@ -10,4 +11,6 @@ __all__ = [
     "increment_numeric_string",
     "IterationResult",
     "run_iteration",
+    "BulkIterationResult",
+    "run_bulk_iteration",
 ]

@@ -51,3 +51,49 @@ def run_iteration(client: ProtectRevealClient, data: str) -> IterationResult:
         restored=restored,
         time_s=t1 - t0,
     )
+
+
+@dataclass
+class BulkIterationResult:
+    inputs: list
+    protect_response: APIResponse
+    reveal_response: APIResponse
+    protected_tokens: list
+    restored_values: list
+    time_s: float
+
+    @property
+    def matches(self) -> list:
+        return [r == i for i, r in zip(self.inputs, self.restored_values)]
+
+
+def run_bulk_iteration(client: ProtectRevealClient, inputs: list, batch_size: int = 10) -> list:
+    """Process inputs in batches (default 10) using protect_bulk and reveal_bulk.
+
+    Returns a list of BulkIterationResult, one per batch.
+    """
+    results = []
+    t_start = time.perf_counter()
+    for i in range(0, len(inputs), batch_size):
+        batch = inputs[i : i + batch_size]
+        t0 = time.perf_counter()
+        protect_resp = client.protect_bulk(batch)
+        protected_list = client.extract_protected_list_from_protect_response(protect_resp)
+
+        # reveal bulk expects list of protected tokens
+        reveal_resp = client.reveal_bulk(protected_list)
+        restored_list = client.extract_restored_list_from_reveal_response(reveal_resp)
+        t1 = time.perf_counter()
+
+        results.append(
+            BulkIterationResult(
+                inputs=batch,
+                protect_response=protect_resp,
+                reveal_response=reveal_resp,
+                protected_tokens=protected_list,
+                restored_values=restored_list,
+                time_s=t1 - t0,
+            )
+        )
+
+    return results
