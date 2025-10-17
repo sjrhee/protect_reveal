@@ -1,0 +1,179 @@
+# protect_reveal
+
+이 레포지토리에는 protect/reveal API와 상호작용하는 파이썬 클라이언트 라이브러리와 CLI 도구가 포함되어 있습니다.
+
+## 프로젝트 구조
+
+```
+.
+├── protect_reveal.py  # 메인 파이썬 스크립트
+├── requirements.txt   # 의존성 목록
+├── setup.sh          # 설치 스크립트
+├── README.md         # 문서
+└── venv/             # 가상 환경 (자동 생성)
+```
+
+## 기능
+
+- 재사용 가능한 API 클라이언트 라이브러리
+- HTTP 연결 재사용을 통한 성능 최적화
+- 강력한 타입 힌트와 에러 처리
+- 상세한 진행 상황 및 통계 보고
+- 사용자 정의 가능한 설정
+
+## 설치 및 설정
+
+### 요구사항
+
+- Python 3.7 이상
+- bash 쉘 환경
+
+### 빠른 설정
+
+포함된 설정 스크립트를 사용하여 자동으로 가상 환경을 생성하고 의존성을 설치할 수 있습니다:
+
+```bash
+./setup.sh
+```
+
+### 수동 설정
+
+가상 환경을 수동으로 설정하려면:
+
+```bash
+# 가상 환경 생성
+python3 -m venv venv
+
+# 가상 환경 활성화
+source venv/bin/activate  # Linux/Mac
+# 또는
+.\venv\Scripts\activate   # Windows
+
+# 의존성 설치
+pip install -r requirements.txt
+```
+
+## 사용법
+
+### 가상 환경 활성화
+
+스크립트를 실행하기 전에 항상 가상 환경을 활성화해야 합니다:
+
+```bash
+source venv/bin/activate  # Linux/Mac
+# 또는
+.\venv\Scripts\activate   # Windows
+```
+
+작업이 끝난 후에는 가상 환경을 비활성화할 수 있습니다:
+```bash
+deactivate
+```
+
+### 기본 실행
+
+```bash
+python3 protect_reveal.py
+```
+
+### 주요 명령행 옵션
+
+```
+--host HOST           API 호스트 (기본값: 192.168.0.231)
+--port PORT          API 포트 (기본값: 32082)
+--policy POLICY      보호 정책 이름 (기본값: Pol01)
+--start-data DATA    시작 데이터 (기본값: 0123456789123456)
+--iterations N       반복 횟수 (기본값: 100)
+--timeout SEC        요청 타임아웃 (기본값: 10초)
+--verbose           디버그 로깅 활성화
+--show-bodies       요청/응답 본문 출력
+--no-progress       진행 상황 출력 비활성화
+```
+
+### 예시 실행
+
+```bash
+# 사용자 정의 호스트와 포트로 실행
+python3 protect_reveal.py --host api.example.com --port 8443
+
+# 디버그 모드로 10회 반복 실행
+python3 protect_reveal.py --iterations 10 --verbose --show-bodies
+
+# 다른 시작 데이터와 정책으로 실행
+python3 protect_reveal.py --policy CustomPolicy --start-data 9876543210
+```
+
+## 라이브러리로 사용
+
+```python
+from protect_reveal import ProtectRevealClient, APIError
+
+# 클라이언트 초기화
+try:
+    client = ProtectRevealClient(
+        host="api.example.com",
+        port=8443,
+        policy="CustomPolicy"
+    )
+    
+    # 단일 protect/reveal 수행
+    result = run_iteration(client, "0123456789123456")
+    
+    # 결과 확인
+    if result.success:
+        print(f"Protected: {result.protected_token}")
+        print(f"Restored: {result.restored}")
+        print(f"Time: {result.time_s:.4f}s")
+    else:
+        print("Operation failed:")
+        print(f"Protect status: {result.protect_response.status_code}")
+        print(f"Reveal status: {result.reveal_response.status_code}")
+
+except APIError as e:
+    print(f"API error: {e}")
+    print(f"Status code: {e.status_code}")
+```
+
+## 에러 처리
+
+라이브러리는 다음과 같은 예외를 발생시킬 수 있습니다:
+
+- `APIError`: API 호출 중 발생한 오류
+  - `status_code`: HTTP 상태 코드
+  - `response`: 원본 응답 객체
+
+## 개발 환경 설정
+
+이 프로젝트의 개발에 참여하려면:
+
+1. 저장소 복제
+```bash
+git clone <repository-url>
+cd protect_reveal
+```
+
+2. 가상 환경 설정
+```bash
+./setup.sh
+source venv/bin/activate
+```
+
+3. 코드 수정 및 테스트
+```bash
+python protect_reveal.py --verbose  # 테스트 실행
+```
+client = ProtectRevealClient(
+    host="api.example.com",
+    port=8443,
+    policy="CustomPolicy"
+)
+
+# 단일 protect/reveal 수행
+result = run_iteration(client, "0123456789123456")
+
+# 결과 확인
+if result.success:
+    print(f"Protected: {result.protected_token}")
+    print(f"Restored: {result.restored}")
+    print(f"Time: {result.time_s:.4f}s")
+```
