@@ -8,9 +8,9 @@
 .
 ├── protect_reveal.py  # 메인 파이썬 스크립트
 ├── requirements.txt   # 의존성 목록
-├── setup.sh          # 설치 스크립트
-├── README.md         # 문서
-└── venv/             # 가상 환경 (자동 생성)
+├── setup.sh           # 설치 스크립트
+├── README.md          # 문서
+└── (venv/)            # 가상 환경 (로컬에서 자동 생성; 저장소에 커밋하지 마세요)
 ```
 
 ## 기능
@@ -80,15 +80,17 @@ python3 protect_reveal.py
 
 ```
 --host HOST           API 호스트 (기본값: 192.168.0.231)
---port PORT          API 포트 (기본값: 32082)
---policy POLICY      보호 정책 이름 (기본값: Pol01)
---start-data DATA    시작 데이터 (기본값: 0123456789123456)
---iterations N       반복 횟수 (기본값: 100)
---timeout SEC        요청 타임아웃 (기본값: 10초)
---verbose           디버그 로깅 활성화
---show-bodies       요청/응답 본문 출력
---no-progress       진행 상황 출력 비활성화
+--port PORT           API 포트 (기본값: 32082)
+--policy POLICY       보호 정책 이름 (기본값: Pol01)
+--start-data DATA     시작 데이터 (기본값: 0123456789123456)
+--iterations N        반복 횟수 (기본값: 100)
+--timeout SEC         요청 타임아웃 (기본값: 10초)
+--verbose             디버그 로깅 활성화
+--show-bodies         요청/응답 본문 출력
+--show-progress       진행 상황 출력 활성화 (기본값: 비활성화)
 ```
+
+기본적으로 진행 상황 출력은 비활성화(OFF)입니다. 대량 반복이나 디버깅이 필요할 때 실시간 진행 상태를 보려면 `--show-progress` 옵션을 사용하세요.
 
 ### 예시 실행
 
@@ -106,7 +108,7 @@ python3 protect_reveal.py --policy CustomPolicy --start-data 9876543210
 ## 라이브러리로 사용
 
 ```python
-from protect_reveal import ProtectRevealClient, APIError
+from protect_reveal import ProtectRevealClient, APIError, run_iteration
 
 # 클라이언트 초기화
 try:
@@ -139,8 +141,8 @@ except APIError as e:
 라이브러리는 다음과 같은 예외를 발생시킬 수 있습니다:
 
 - `APIError`: API 호출 중 발생한 오류
-  - `status_code`: HTTP 상태 코드
-  - `response`: 원본 응답 객체
+    - `status_code`: HTTP 상태 코드
+    - `response`: 원본 응답 객체
 
 ## 개발 환경 설정
 
@@ -153,27 +155,14 @@ cd protect_reveal
 ```
 
 2. 가상 환경 설정
+
 ```bash
 ./setup.sh
 source venv/bin/activate
 ```
 
 3. 코드 수정 및 테스트
+
 ```bash
 python protect_reveal.py --verbose  # 테스트 실행
-```
-client = ProtectRevealClient(
-    host="api.example.com",
-    port=8443,
-    policy="CustomPolicy"
-)
-
-# 단일 protect/reveal 수행
-result = run_iteration(client, "0123456789123456")
-
-# 결과 확인
-if result.success:
-    print(f"Protected: {result.protected_token}")
-    print(f"Restored: {result.restored}")
-    print(f"Time: {result.time_s:.4f}s")
 ```

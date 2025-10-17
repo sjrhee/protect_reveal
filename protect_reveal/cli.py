@@ -20,7 +20,7 @@ class Config:
     timeout: int = 10
     verbose: bool = False
     show_bodies: bool = False
-    show_progress: bool = True
+    show_progress: bool = False
 
     @classmethod
     def from_args(cls, argv: Optional[list] = None) -> 'Config':
@@ -31,9 +31,9 @@ class Config:
         parser.add_argument("--start-data", default=cls.start_data, help="numeric data to start from")
         parser.add_argument("--iterations", default=cls.iterations, type=int, help="number of iterations")
         parser.add_argument("--timeout", default=cls.timeout, type=int, help="per-request timeout seconds")
-        parser.add_argument("--verbose", action="store_true", help="enable debug logging")
-        parser.add_argument("--show-bodies", action="store_true", help="print request and response JSON bodies")
-        parser.add_argument("--no-progress", action="store_false", dest="show_progress", help="suppress per-iteration progress output")
+    parser.add_argument("--verbose", action="store_true", help="enable debug logging")
+    parser.add_argument("--show-bodies", action="store_true", help="print request and response JSON bodies")
+    parser.add_argument("--show-progress", action="store_true", dest="show_progress", help="show per-iteration progress output")
         args = parser.parse_args(argv)
         return cls(**vars(args))
 

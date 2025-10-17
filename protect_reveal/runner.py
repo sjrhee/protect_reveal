@@ -1,3 +1,9 @@
+"""작업 단일 반복을 수행하는 실행기.
+
+run_iteration은 제공된 `ProtectRevealClient`를 사용해 protect -> reveal 순서로
+요청을 보내고, 소요 시간과 응답을 담은 `IterationResult`를 반환합니다.
+"""
+
 from dataclasses import dataclass
 from typing import Optional
 import time
