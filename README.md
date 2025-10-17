@@ -166,3 +166,4 @@ source venv/bin/activate
 ```bash
 python protect_reveal.py --verbose  # 테스트 실행
 ```
+# CRDP
