@@ -236,28 +236,30 @@ def main(argv: Optional[list] = None) -> int:
                     result.match,
                 )
 
-                if config.show_bodies:
-                    def pretty(x: Any) -> str:
-                        try:
-                            return json.dumps(x, ensure_ascii=False, indent=2)
-                        except Exception:
-                            return str(x)
+            # show_bodies should be independent of show_progress
+            if config.show_bodies:
+                def pretty(x: Any) -> str:
+                    try:
+                        return json.dumps(x, ensure_ascii=False, indent=2)
+                    except Exception:
+                        return str(x)
 
-                    protect_payload = {
-                        "protection_policy_name": config.policy,
-                        "data": current
-                    }
-                    reveal_payload = {
-                        "protection_policy_name": config.policy,
-                        "protected_data": result.protected_token or ""
-                    }
+                protect_payload = {
+                    "protection_policy_name": config.policy,
+                    "data": current
+                }
+                reveal_payload = {
+                    "protection_policy_name": config.policy,
+                    "protected_data": result.protected_token or ""
+                }
 
-                    logger.info("  Sent protect payload:\n%s", pretty(protect_payload))
-                    logger.info("  Received protect body:\n%s", 
-                              pretty(result.protect_response.body))
-                    logger.info("  Sent reveal payload:\n%s", pretty(reveal_payload))
-                    logger.info("  Received reveal body:\n%s", 
-                              pretty(result.reveal_response.body))
+                if not config.show_progress:
+                    logger.info("#%03d data=%s", i, current)
+
+                logger.info("  Sent protect payload:\n%s", pretty(protect_payload))
+                logger.info("  Received protect body:\n%s", pretty(result.protect_response.body))
+                logger.info("  Sent reveal payload:\n%s", pretty(reveal_payload))
+                logger.info("  Received reveal body:\n%s", pretty(result.reveal_response.body))
 
             try:
                 current = increment_numeric_string(current)

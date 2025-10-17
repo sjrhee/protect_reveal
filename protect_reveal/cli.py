@@ -31,9 +31,9 @@ class Config:
         parser.add_argument("--start-data", default=cls.start_data, help="numeric data to start from")
         parser.add_argument("--iterations", default=cls.iterations, type=int, help="number of iterations")
         parser.add_argument("--timeout", default=cls.timeout, type=int, help="per-request timeout seconds")
-    parser.add_argument("--verbose", action="store_true", help="enable debug logging")
-    parser.add_argument("--show-bodies", action="store_true", help="print request and response JSON bodies")
-    parser.add_argument("--show-progress", action="store_true", dest="show_progress", help="show per-iteration progress output")
+        parser.add_argument("--verbose", action="store_true", help="enable debug logging")
+        parser.add_argument("--show-bodies", action="store_true", help="print request and response JSON bodies")
+        parser.add_argument("--show-progress", action="store_true", dest="show_progress", help="show per-iteration progress output")
         args = parser.parse_args(argv)
         return cls(**vars(args))
 
@@ -64,11 +64,15 @@ def main(argv: Optional[list] = None) -> int:
             if config.show_progress:
                 logger.info("#%03d data=%s time=%.4fs protect_status=%s reveal_status=%s match=%s", i, current, result.time_s, result.protect_response.status_code, result.reveal_response.status_code, result.match)
 
-                if config.show_bodies:
-                    logger.info("  Sent protect payload:\n%s", pretty_json({"protection_policy_name": config.policy, "data": current}))
-                    logger.info("  Received protect body:\n%s", pretty_json(result.protect_response.body))
-                    logger.info("  Sent reveal payload:\n%s", pretty_json({"protection_policy_name": config.policy, "protected_data": result.protected_token or ""}))
-                    logger.info("  Received reveal body:\n%s", pretty_json(result.reveal_response.body))
+            # show_bodies is independent of show_progress: always print bodies when requested
+            if config.show_bodies:
+                if not config.show_progress:
+                    # provide a minimal header so bodies are understandable when progress is off
+                    logger.info("#%03d data=%s", i, current)
+                logger.info("  Sent protect payload:\n%s", pretty_json({"protection_policy_name": config.policy, "data": current}))
+                logger.info("  Received protect body:\n%s", pretty_json(result.protect_response.body))
+                logger.info("  Sent reveal payload:\n%s", pretty_json({"protection_policy_name": config.policy, "protected_data": result.protected_token or ""}))
+                logger.info("  Received reveal body:\n%s", pretty_json(result.reveal_response.body))
 
             try:
                 current = increment_numeric_string(current)
