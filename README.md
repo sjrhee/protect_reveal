@@ -88,6 +88,10 @@ python3 protect_reveal.py
 --verbose             디버그 로깅 활성화
 --show-bodies         요청/응답 본문 출력
 --show-progress       진행 상황 출력 활성화 (기본값: 비활성화)
+
+--bulk                bulk(배치) 모드 사용 (프로텍트/리빌 연산을 배치로 처리)
+--batch-size N        bulk 모드의 배치 크기 (기본값: 25)
+--show-bodies         bulk 모드에서 요청/응답 본문을 출력 (기본: 비활성화)
 ```
 
 기본적으로 진행 상황 출력은 비활성화(OFF)입니다. 대량 반복이나 디버깅이 필요할 때 실시간 진행 상태를 보려면 `--show-progress` 옵션을 사용하세요.
