@@ -52,17 +52,9 @@ source venv/bin/activate
 # 가상환경 생성
 python3 -m venv .venv
 source .venv/bin/activate
-
-# 런타임 의존성 설치
-pip install -r requirements.txt
-
-# (선택) 개발 의존성 설치 및 테스트 실행
-pip install -r requirements-dev.txt
-pytest -q
-```
-
-## 사용법
-
+--use-jwt             JWT 모드 사용(기본: 미적용). 활성화 시 reveal 요청에 username 포함
+--username NAME       JWT 모드에서 reveal 바디에 넣을 사용자명
+--auth-bearer TOKEN   Authorization: Bearer 토큰으로 전송(서버가 토큰 검증 시 필요)
 ### 기본 실행
 
 ```bash
@@ -79,6 +71,12 @@ python protect_reveal.py
 --iterations N        반복 횟수 (기본: 100)
 --timeout SEC         요청 타임아웃(초, 기본: 10)
 --verbose             디버그 로깅 활성화
+
+# JWT 토큰만 헤더로 전달(서버가 토큰만 필요로 하는 경우)
+python protect_reveal.py --auth-bearer "$(cat protect_reveal/token.txt)" --iterations 10
+
+# JWT 모드로 username 포함하여 reveal 호출
+python protect_reveal.py --use-jwt --username alice --auth-bearer "$(cat protect_reveal/token.txt)" --iterations 10
 --show-bodies         요청 메타(url/headers/body)와 응답 JSON 출력
 --show-progress       진행 상황 출력
 --bulk                배치 모드 사용(ProtectBulk/RevealBulk)
@@ -114,7 +112,7 @@ python protect_reveal.py
 }
 ```
 
-주의: 헤더에 민감 정보가 포함될 수 있습니다. 필요 시 터미널에서 리디렉션하여 파일로 저장하거나, 마스킹 옵션을 추가해 사용하는 것을 권장합니다.
+주의: 헤더에 민감 정보가 포함될 수 있습니다. `--show-bodies` 출력에서는 Authorization 헤더가 자동 마스킹됩니다.
 
 ### 출력 형식
 
