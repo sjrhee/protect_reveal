@@ -76,13 +76,17 @@ def main(argv: Optional[list] = None) -> int:
                 rbody = getattr(b.reveal_response, 'body', {}) or {}
                 preq = getattr(b.protect_response, 'request_payload', None)
                 rreq = getattr(b.reveal_response, 'request_payload', None)
+                purl = getattr(b.protect_response, 'request_url', None)
+                rurl = getattr(b.reveal_response, 'request_url', None)
+                pheaders = getattr(b.protect_response, 'request_headers', None)
+                rheaders = getattr(b.reveal_response, 'request_headers', None)
                 # Print raw server response bodies and include the request payloads for traceability
                 print(
                     json.dumps(
                         {
                             "batch": idx,
-                            "protect": {"request": preq, "response": pbody},
-                            "reveal": {"request": rreq, "response": rbody},
+                            "protect": {"request": {"url": purl, "headers": pheaders, "body": preq}, "response": pbody},
+                            "reveal": {"request": {"url": rurl, "headers": rheaders, "body": rreq}, "response": rbody},
                             "time_s": b.time_s,
                         },
                         ensure_ascii=False,
@@ -150,14 +154,16 @@ def main(argv: Optional[list] = None) -> int:
                 rbody = getattr(result.reveal_response, 'body', {}) or {}
                 preq = getattr(result.protect_response, 'request_payload', None)
                 rreq = getattr(result.reveal_response, 'request_payload', None)
+                purl = getattr(result.protect_response, 'request_url', None)
+                rurl = getattr(result.reveal_response, 'request_url', None)
+                pheaders = getattr(result.protect_response, 'request_headers', None)
+                rheaders = getattr(result.reveal_response, 'request_headers', None)
                 print(
                     json.dumps(
-                        {
-                            "batch": i,
-                            "protect": {"request": preq, "response": pbody},
-                            "reveal": {"request": rreq, "response": rbody},
-                            "time_s": result.time_s,
-                        },
+                        {"batch": i,
+                         "protect": {"request": {"url": purl, "headers": pheaders, "body": preq}, "response": pbody},
+                         "reveal": {"request": {"url": rurl, "headers": rheaders, "body": rreq}, "response": rbody},
+                         "time_s": result.time_s},
                         ensure_ascii=False,
                         indent=2,
                     )

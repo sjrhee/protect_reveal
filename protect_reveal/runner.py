@@ -97,7 +97,7 @@ def run_bulk_iteration(client: ProtectRevealClient, inputs: list, batch_size: in
                 "protection_policy_name": client.policy,
                 "data": batch,
                 "data_array": batch,
-            })
+            }, request_url=client.protect_bulk_url, request_headers=dict(client.session.headers))
 
         protected_list = client.extract_protected_list_from_protect_response(protect_resp)
 
@@ -123,7 +123,7 @@ def run_bulk_iteration(client: ProtectRevealClient, inputs: list, batch_size: in
                     [p if isinstance(p, dict) else {"protected_data": p} for p in protected_list]
                 )],
                 "protected_data_array": [p if isinstance(p, dict) else {"protected_data": p} for p in protected_list],
-            })
+            }, request_url=client.reveal_bulk_url, request_headers=dict(client.session.headers))
 
         restored_list = client.extract_restored_list_from_reveal_response(reveal_resp)
         t1 = time.perf_counter()

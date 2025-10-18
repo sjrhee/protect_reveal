@@ -22,6 +22,9 @@ class APIResponse:
     body: Any
     # 보내었던 요청 페이로드를 보존해 --show-bodies에서 요청 본문도 함께 출력할 수 있게 함
     request_payload: Any = None
+    # 요청 메타데이터: 최종 URL과 헤더
+    request_url: Optional[str] = None
+    request_headers: Optional[Dict[str, Any]] = None
 
     @property
     def is_success(self) -> bool:
@@ -56,7 +59,13 @@ class ProtectRevealClient:
         except Exception:
             body = getattr(resp, 'text', None)
 
-        return APIResponse(status, body, request_payload=payload)
+        return APIResponse(
+            status,
+            body,
+            request_payload=payload,
+            request_url=url,
+            request_headers=dict(self.session.headers),
+        )
 
     # Bulk helpers
     def protect_bulk(self, items: list) -> APIResponse:
