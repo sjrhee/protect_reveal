@@ -67,7 +67,7 @@ class BulkIterationResult:
         return [r == i for i, r in zip(self.inputs, self.restored_values)]
 
 
-def run_bulk_iteration(client: ProtectRevealClient, inputs: list, batch_size: int = 10) -> list:
+def run_bulk_iteration(client: ProtectRevealClient, inputs: list, batch_size: int = 25) -> list:
     """Process inputs in batches (default 10) using protect_bulk and reveal_bulk.
 
     Returns a list of BulkIterationResult, one per batch.

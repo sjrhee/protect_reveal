@@ -64,7 +64,7 @@ class Config:
     show_bodies: bool = False
     show_progress: bool = False
     bulk: bool = False
-    batch_size: int = 10
+    batch_size: int = 25
     
     @classmethod
     def from_args(cls, argv: Optional[list] = None) -> 'Config':
@@ -90,7 +90,7 @@ class Config:
                    dest="show_progress", 
                    help="show per-iteration progress output")
         parser.add_argument("--bulk", action="store_true", help="use bulk protect/reveal endpoints")
-        parser.add_argument("--batch-size", default=10, type=int, help="batch size for bulk operations (default 10)")
+        parser.add_argument("--batch-size", default=25, type=int, help="batch size for bulk operations (default 25)")
 
         args = parser.parse_args(argv)
         return cls(**vars(args))
@@ -319,36 +319,45 @@ def main(argv: Optional[list] = None) -> int:
                 break
 
         bulk_results = run_bulk_iteration(client, inputs, batch_size=config.batch_size)
+        bulk_results = run_bulk_iteration(client, inputs, batch_size=config.batch_size)
 
-        # Print per-batch JSON results in Thales-style format
+        # If requested, print per-batch details (bodies). Otherwise suppress.
         for idx, b in enumerate(bulk_results, start=1):
-            # Protect-side summary (use server values when present)
-            pbody = getattr(b.protect_response, 'body', {}) or {}
-            rbody = getattr(b.reveal_response, 'body', {}) or {}
-
-            protect_obj = {
-                "status": pbody.get("status", "Success" if b.protect_response and b.protect_response.is_success else "Error"),
-                "total_count": pbody.get("total_count", len(b.inputs)),
-                "success_count": pbody.get("success_count", len(b.protected_tokens)),
-                "error_count": pbody.get("error_count", max(0, len(b.inputs) - len(b.protected_tokens))),
-            }
             if config.show_bodies:
-                protect_obj["protected_data_array"] = [{"protected_data": tok} for tok in b.protected_tokens]
+                pbody = getattr(b.protect_response, 'body', {}) or {}
+                rbody = getattr(b.reveal_response, 'body', {}) or {}
 
-            # Reveal-side summary (data_array)
-            reveal_obj = {
-                "status": rbody.get("status", "Success" if b.reveal_response and b.reveal_response.is_success else "Error"),
-                "total_count": rbody.get("total_count", len(b.inputs)),
-                "success_count": rbody.get("success_count", len(b.restored_values)),
-                "error_count": rbody.get("error_count", max(0, len(b.inputs) - len(b.restored_values))),
-            }
-            if config.show_bodies:
-                reveal_obj["data_array"] = [{"data": v} for v in b.restored_values]
+                protect_obj = {
+                    "status": pbody.get("status", "Success" if b.protect_response and b.protect_response.is_success else "Error"),
+                    "total_count": pbody.get("total_count", len(b.inputs)),
+                    "success_count": pbody.get("success_count", len(b.protected_tokens)),
+                    "error_count": pbody.get("error_count", max(0, len(b.inputs) - len(b.protected_tokens))),
+                    "protected_data_array": [{"protected_data": tok} for tok in b.protected_tokens],
+                }
 
-            out = {"batch": idx, "protect": protect_obj, "reveal": reveal_obj, "time_s": b.time_s}
-            # Do not print per-batch summaries unless show_bodies is enabled.
-            if config.show_bodies:
+                reveal_obj = {
+                    "status": rbody.get("status", "Success" if b.reveal_response and b.reveal_response.is_success else "Error"),
+                    "total_count": rbody.get("total_count", len(b.inputs)),
+                    "success_count": rbody.get("success_count", len(b.restored_values)),
+                    "error_count": rbody.get("error_count", max(0, len(b.inputs) - len(b.restored_values))),
+                    "data_array": [{"data": v} for v in b.restored_values],
+                }
+
+                out = {"batch": idx, "protect": protect_obj, "reveal": reveal_obj, "time_s": b.time_s}
                 print(json.dumps(out, ensure_ascii=False, indent=2))
+
+        # Print overall bulk summary so user sees timing and counts even when
+        # per-batch output is suppressed.
+        total_batches = len(bulk_results)
+        total_items = sum(len(b.inputs) for b in bulk_results)
+        total_time = sum(b.time_s for b in bulk_results)
+        avg_batch_time = (total_time / total_batches) if total_batches else 0.0
+
+        logger.info("Bulk run summary:")
+        logger.info("  Batches processed: %d", total_batches)
+        logger.info("  Items processed: %d", total_items)
+        logger.info("  Total bulk time (sum of batch times): %.4fs", total_time)
+        logger.info("  Average batch time: %.4fs", avg_batch_time)
 
         return 0
 
