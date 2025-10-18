@@ -79,16 +79,42 @@ python protect_reveal.py
 --iterations N        반복 횟수 (기본: 100)
 --timeout SEC         요청 타임아웃(초, 기본: 10)
 --verbose             디버그 로깅 활성화
---show-bodies         요청/응답 본문 출력
+--show-bodies         요청 메타(url/headers/body)와 응답 JSON 출력
 --show-progress       진행 상황 출력
-
 --bulk                배치 모드 사용(ProtectBulk/RevealBulk)
 --batch-size N        배치 크기(기본: 25)
 ```
 
-메시지 본문(JSON)은 기본적으로 출력하지 않습니다. `--show-bodies`를 주면 다음을 출력합니다.
-- 단건 모드: 각 반복의 protect/reveal 결과를 배치 모드와 동일한 JSON 구조로 출력
-- 배치 모드: 각 배치의 protect/reveal 결과를 JSON으로 출력
+메시지 본문(JSON)은 기본적으로 출력하지 않습니다. `--show-bodies`를 주면 요청과 응답을 함께 출력합니다.
+- 단건 모드: 각 반복마다 protect/reveal의 요청과 응답을 동일한 JSON 구조로 출력
+- 배치 모드: 각 배치마다 protect/reveal의 요청과 응답을 동일한 JSON 구조로 출력
+
+요청/응답 출력 형식 예시는 아래와 같습니다(서버 응답은 원문 그대로 출력):
+
+```json
+{
+	"batch": 1,
+	"protect": {
+		"request": {
+			"url": "http://<host>:<port>/v1/protect",
+			"headers": { "Content-Type": "application/json" },
+			"body": { "protection_policy_name": "P03", "data": "1234567890123" }
+		},
+		"response": { /* 서버가 준 JSON 원문 */ }
+	},
+	"reveal": {
+		"request": {
+			"url": "http://<host>:<port>/v1/reveal",
+			"headers": { "Content-Type": "application/json" },
+			"body": { "protection_policy_name": "P03", "protected_data": "..." }
+		},
+		"response": { /* 서버가 준 JSON 원문 */ }
+	},
+	"time_s": 0.1234
+}
+```
+
+주의: 헤더에 민감 정보가 포함될 수 있습니다. 필요 시 터미널에서 리디렉션하여 파일로 저장하거나, 마스킹 옵션을 추가해 사용하는 것을 권장합니다.
 
 ### 출력 형식
 
