@@ -68,12 +68,11 @@ class BulkIterationResult:
 
 
 def run_bulk_iteration(client: ProtectRevealClient, inputs: list, batch_size: int = 25) -> list:
-    """Process inputs in batches (default 10) using protect_bulk and reveal_bulk.
+    """Process inputs in batches (default 25) using protect_bulk and reveal_bulk.
 
     Returns a list of BulkIterationResult, one per batch.
     """
     results = []
-    t_start = time.perf_counter()
     for i in range(0, len(inputs), batch_size):
         batch = inputs[i : i + batch_size]
         t0 = time.perf_counter()

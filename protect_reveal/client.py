@@ -135,22 +135,22 @@ class ProtectRevealClient:
             return [str(x) for x in body]
         if isinstance(body, dict):
             # direct list or keyed list
-            for key in ("data", "restored", "results", "items"):
+            for key in ("data", "restored", "items"):
                 if key in body:
                     val = body[key]
                     if isinstance(val, list):
                         return [str(x) for x in val]
-                    # results may be list of dicts
-                    if key == "results" and isinstance(val, list):
-                        out = []
-                        for item in val:
-                            if isinstance(item, dict):
-                                # try to find common fields
-                                for k in ("data", "restored", "value"):
-                                    if k in item:
-                                        out.append(str(item.get(k)))
-                                        break
-                        return out
+            # results may be list of dicts
+            if "results" in body and isinstance(body["results"], list):
+                out = []
+                for item in body["results"]:
+                    if isinstance(item, dict):
+                        # try to find common fields
+                        for k in ("data", "restored", "value"):
+                            if k in item:
+                                out.append(str(item.get(k)))
+                                break
+                return out
 
             # Thales-style: data_array -> list of {'data': value}
             if 'data_array' in body and isinstance(body['data_array'], list):
