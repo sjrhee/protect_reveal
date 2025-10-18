@@ -5,8 +5,8 @@ import json
 import logging
 import time
 
-from .client import ProtectRevealClient, APIError
-from .runner import run_iteration, IterationResult
+from .client import ProtectRevealClient, APIError, APIResponse
+from .runner import run_iteration, IterationResult, run_bulk_iteration
 from .utils import increment_numeric_string
 
 
@@ -14,13 +14,15 @@ from .utils import increment_numeric_string
 class Config:
     host: str = "192.168.0.231"
     port: int = 32082
-    policy: str = "Pol01"
-    start_data: str = "0123456789123456"
+    policy: str = "P03"
+    start_data: str = "1234567890123"
     iterations: int = 100
     timeout: int = 10
     verbose: bool = False
     show_bodies: bool = False
     show_progress: bool = False
+    bulk: bool = False
+    batch_size: int = 25
 
     @classmethod
     def from_args(cls, argv: Optional[list] = None) -> 'Config':
@@ -34,6 +36,8 @@ class Config:
         parser.add_argument("--verbose", action="store_true", help="enable debug logging")
         parser.add_argument("--show-bodies", action="store_true", help="print request and response JSON bodies")
         parser.add_argument("--show-progress", action="store_true", dest="show_progress", help="show per-iteration progress output")
+        parser.add_argument("--bulk", action="store_true", help="use bulk protect/reveal endpoints")
+        parser.add_argument("--batch-size", default=25, type=int, help="batch size for bulk operations (default 25)")
         args = parser.parse_args(argv)
         return cls(**vars(args))
 
@@ -52,6 +56,72 @@ def main(argv: Optional[list] = None) -> int:
 
     client = ProtectRevealClient(host=config.host, port=config.port, policy=config.policy, timeout=config.timeout)
 
+    if config.bulk:
+        # build inputs
+        inputs = []
+        cur = config.start_data
+        for _ in range(config.iterations):
+            inputs.append(cur)
+            try:
+                cur = increment_numeric_string(cur)
+            except Exception:
+                break
+
+        t0 = time.perf_counter()
+        bulk_results = run_bulk_iteration(client, inputs, batch_size=config.batch_size)
+        t1 = time.perf_counter()
+
+        # detailed per-batch JSON only when requested
+        for idx, b in enumerate(bulk_results, start=1):
+            if config.show_bodies:
+                pbody = getattr(b.protect_response, 'body', {}) or {}
+                rbody = getattr(b.reveal_response, 'body', {}) or {}
+                protect_obj = {
+                    "status": pbody.get("status", "Success" if getattr(b.protect_response, 'status_code', None) and str(getattr(b.protect_response, 'status_code', '')).startswith('2') else "Error"),
+                    "total_count": pbody.get("total_count", len(b.inputs)),
+                    "success_count": pbody.get("success_count", len(b.protected_tokens)),
+                    "error_count": pbody.get("error_count", max(0, len(b.inputs) - len(b.protected_tokens))),
+                    "protected_data_array": [{"protected_data": tok} for tok in b.protected_tokens],
+                }
+                reveal_obj = {
+                    "status": rbody.get("status", "Success" if getattr(b.reveal_response, 'status_code', None) and str(getattr(b.reveal_response, 'status_code', '')).startswith('2') else "Error"),
+                    "total_count": rbody.get("total_count", len(b.inputs)),
+                    "success_count": rbody.get("success_count", len(b.restored_values)),
+                    "error_count": rbody.get("error_count", max(0, len(b.inputs) - len(b.restored_values))),
+                    "data_array": [{"data": v} for v in b.restored_values],
+                }
+                print(json.dumps({"batch": idx, "protect": protect_obj, "reveal": reveal_obj, "time_s": b.time_s}, ensure_ascii=False, indent=2))
+
+        # overall summary aligned with non-bulk output
+        total_items = sum(len(b.inputs) for b in bulk_results)
+        # Count successful items: prefer exact full-batch success, otherwise fall back to restored count
+        successful_items = 0
+        matched = 0
+        for b in bulk_results:
+            # matches per item when restore equals input
+            try:
+                matched += sum(1 for m in b.matches if m)
+            except Exception:
+                pass
+            if getattr(b.protect_response, 'is_success', False) and getattr(b.reveal_response, 'is_success', False) and len(b.restored_values) == len(b.inputs):
+                successful_items += len(b.inputs)
+            else:
+                successful_items += len(b.restored_values)
+
+        wall_total = t1 - t0
+        sum_batch_times = sum(getattr(b, 'time_s', 0.0) for b in bulk_results)
+
+        logger.info("\nSummary:")
+        logger.info("Iterations attempted: %d", total_items)
+        logger.info("Successful (both 2xx): %d", successful_items)
+        logger.info("Revealed matched original data: %d", matched)
+        logger.info("Total time: %.4fs", wall_total)
+        if total_items:
+            avg_per_iter = (sum_batch_times / total_items)
+            logger.info("Average per-iteration time: %.4fs", avg_per_iter)
+        return 0
+
+    # non-bulk iterative path
     current = config.start_data
     results = []
     t_start = time.perf_counter()
@@ -64,15 +134,25 @@ def main(argv: Optional[list] = None) -> int:
             if config.show_progress:
                 logger.info("#%03d data=%s time=%.4fs protect_status=%s reveal_status=%s match=%s", i, current, result.time_s, result.protect_response.status_code, result.reveal_response.status_code, result.match)
 
-            # show_bodies is independent of show_progress: always print bodies when requested
+            # show_bodies: print the same JSON structure as bulk per-batch output
             if config.show_bodies:
-                if not config.show_progress:
-                    # provide a minimal header so bodies are understandable when progress is off
-                    logger.info("#%03d data=%s", i, current)
-                logger.info("  Sent protect payload:\n%s", pretty_json({"protection_policy_name": config.policy, "data": current}))
-                logger.info("  Received protect body:\n%s", pretty_json(result.protect_response.body))
-                logger.info("  Sent reveal payload:\n%s", pretty_json({"protection_policy_name": config.policy, "protected_data": result.protected_token or ""}))
-                logger.info("  Received reveal body:\n%s", pretty_json(result.reveal_response.body))
+                pbody = getattr(result.protect_response, 'body', {}) or {}
+                rbody = getattr(result.reveal_response, 'body', {}) or {}
+                protect_obj = {
+                    "status": pbody.get("status", "Success" if result.protect_response and result.protect_response.is_success else "Error"),
+                    "total_count": pbody.get("total_count", 1),
+                    "success_count": pbody.get("success_count", 1 if result.protected_token else 0),
+                    "error_count": pbody.get("error_count", 0 if result.protected_token else 1),
+                    "protected_data_array": ([{"protected_data": result.protected_token}] if result.protected_token else []),
+                }
+                reveal_obj = {
+                    "status": rbody.get("status", "Success" if result.reveal_response and result.reveal_response.is_success else "Error"),
+                    "total_count": rbody.get("total_count", 1),
+                    "success_count": rbody.get("success_count", 1 if result.restored is not None else 0),
+                    "error_count": rbody.get("error_count", 0 if result.restored is not None else 1),
+                    "data_array": ([{"data": result.restored}] if result.restored is not None else []),
+                }
+                print(json.dumps({"batch": i, "protect": protect_obj, "reveal": reveal_obj, "time_s": result.time_s}, ensure_ascii=False, indent=2))
 
             try:
                 current = increment_numeric_string(current)
@@ -84,7 +164,7 @@ def main(argv: Optional[list] = None) -> int:
             logger.error("API error: %s (status=%s)", e, e.status_code)
             if config.verbose:
                 logger.exception("Full traceback:")
-            results.append(IterationResult(data=current, protect_response=e.response or None, reveal_response=e.response or None, protected_token=None, restored=None, time_s=0.0))
+            results.append(IterationResult(data=current, protect_response=e.response or APIResponse(None, None), reveal_response=e.response or APIResponse(None, None), protected_token=None, restored=None, time_s=0.0))
             try:
                 current = increment_numeric_string(current)
             except Exception:
