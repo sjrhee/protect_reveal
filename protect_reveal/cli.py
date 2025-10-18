@@ -67,7 +67,9 @@ def main(argv: Optional[list] = None) -> int:
             except Exception:
                 break
 
+        t0 = time.perf_counter()
         bulk_results = run_bulk_iteration(client, inputs, batch_size=config.batch_size)
+        t1 = time.perf_counter()
 
         # detailed per-batch JSON only when requested
         for idx, b in enumerate(bulk_results, start=1):
@@ -90,16 +92,33 @@ def main(argv: Optional[list] = None) -> int:
                 }
                 print(json.dumps({"batch": idx, "protect": protect_obj, "reveal": reveal_obj, "time_s": b.time_s}, ensure_ascii=False, indent=2))
 
-        # overall summary
-        total_batches = len(bulk_results)
+        # overall summary aligned with non-bulk output
         total_items = sum(len(b.inputs) for b in bulk_results)
-        total_time = sum(b.time_s for b in bulk_results)
-        avg_batch_time = (total_time / total_batches) if total_batches else 0.0
-        logger.info("Bulk run summary:")
-        logger.info("  Batches processed: %d", total_batches)
-        logger.info("  Items processed: %d", total_items)
-        logger.info("  Total bulk time (sum of batch times): %.4fs", total_time)
-        logger.info("  Average batch time: %.4fs", avg_batch_time)
+        # Count successful items: prefer exact full-batch success, otherwise fall back to restored count
+        successful_items = 0
+        matched = 0
+        for b in bulk_results:
+            # matches per item when restore equals input
+            try:
+                matched += sum(1 for m in b.matches if m)
+            except Exception:
+                pass
+            if getattr(b.protect_response, 'is_success', False) and getattr(b.reveal_response, 'is_success', False) and len(b.restored_values) == len(b.inputs):
+                successful_items += len(b.inputs)
+            else:
+                successful_items += len(b.restored_values)
+
+        wall_total = t1 - t0
+        sum_batch_times = sum(getattr(b, 'time_s', 0.0) for b in bulk_results)
+
+        logger.info("\nSummary:")
+        logger.info("Iterations attempted: %d", total_items)
+        logger.info("Successful (both 2xx): %d", successful_items)
+        logger.info("Revealed matched original data: %d", matched)
+        logger.info("Total time: %.4fs", wall_total)
+        if total_items:
+            avg_per_iter = (sum_batch_times / total_items)
+            logger.info("Average per-iteration time: %.4fs", avg_per_iter)
         return 0
 
     # non-bulk iterative path
