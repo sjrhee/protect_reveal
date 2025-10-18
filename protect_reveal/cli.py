@@ -74,10 +74,17 @@ def main(argv: Optional[list] = None) -> int:
             if config.show_bodies:
                 pbody = getattr(b.protect_response, 'body', {}) or {}
                 rbody = getattr(b.reveal_response, 'body', {}) or {}
-                # Print raw server response bodies to preserve official schema fields
+                preq = getattr(b.protect_response, 'request_payload', None)
+                rreq = getattr(b.reveal_response, 'request_payload', None)
+                # Print raw server response bodies and include the request payloads for traceability
                 print(
                     json.dumps(
-                        {"batch": idx, "protect": pbody, "reveal": rbody, "time_s": b.time_s},
+                        {
+                            "batch": idx,
+                            "protect": {"request": preq, "response": pbody},
+                            "reveal": {"request": rreq, "response": rbody},
+                            "time_s": b.time_s,
+                        },
                         ensure_ascii=False,
                         indent=2,
                     )
@@ -137,13 +144,20 @@ def main(argv: Optional[list] = None) -> int:
                     result.match,
                 )
 
-            # show_bodies: print raw server response bodies to match API docs
+            # show_bodies: print raw server response bodies and include request payloads
             if config.show_bodies:
                 pbody = getattr(result.protect_response, 'body', {}) or {}
                 rbody = getattr(result.reveal_response, 'body', {}) or {}
+                preq = getattr(result.protect_response, 'request_payload', None)
+                rreq = getattr(result.reveal_response, 'request_payload', None)
                 print(
                     json.dumps(
-                        {"batch": i, "protect": pbody, "reveal": rbody, "time_s": result.time_s},
+                        {
+                            "batch": i,
+                            "protect": {"request": preq, "response": pbody},
+                            "reveal": {"request": rreq, "response": rbody},
+                            "time_s": result.time_s,
+                        },
                         ensure_ascii=False,
                         indent=2,
                     )

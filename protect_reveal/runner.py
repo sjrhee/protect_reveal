@@ -93,7 +93,11 @@ def run_bulk_iteration(client: ProtectRevealClient, inputs: list, batch_size: in
                 except Exception:
                     body = getattr(resp, 'text', None)
                 status = getattr(resp, 'status_code', status)
-            protect_resp = APIResponse(status, body)
+            protect_resp = APIResponse(status, body, request_payload={
+                "protection_policy_name": client.policy,
+                "data": batch,
+                "data_array": batch,
+            })
 
         protected_list = client.extract_protected_list_from_protect_response(protect_resp)
 
@@ -110,7 +114,16 @@ def run_bulk_iteration(client: ProtectRevealClient, inputs: list, batch_size: in
                 except Exception:
                     body = getattr(resp, 'text', None)
                 status = getattr(resp, 'status_code', status)
-            reveal_resp = APIResponse(status, body)
+            reveal_resp = APIResponse(status, body, request_payload={
+                "protection_policy_name": client.policy,
+                "protected_data": [item.get("protected_data") if isinstance(item, dict) else str(item) for item in (
+                    [p if isinstance(p, dict) else {"protected_data": p} for p in protected_list]
+                )],
+                "protected_array": [item.get("protected_data") if isinstance(item, dict) else str(item) for item in (
+                    [p if isinstance(p, dict) else {"protected_data": p} for p in protected_list]
+                )],
+                "protected_data_array": [p if isinstance(p, dict) else {"protected_data": p} for p in protected_list],
+            })
 
         restored_list = client.extract_restored_list_from_reveal_response(reveal_resp)
         t1 = time.perf_counter()
