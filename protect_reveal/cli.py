@@ -15,7 +15,7 @@ class Config:
     host: str = "192.168.0.231"
     port: int = 32082
     policy: str = "P03"
-    start_data: str = "0123456789123"
+    start_data: str = "1234567890123"
     iterations: int = 100
     timeout: int = 10
     verbose: bool = False

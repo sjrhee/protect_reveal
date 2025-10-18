@@ -70,7 +70,7 @@ python protect_reveal.py
 --host HOST           API 호스트 (기본: 192.168.0.231)
 --port PORT           API 포트 (기본: 32082)
 --policy POLICY       보호 정책 이름 (기본: P03)
---start-data DATA     시작 데이터 (기본: 0123456789123)
+--start-data DATA     시작 데이터 (기본: 1234567890123)
 --iterations N        반복 횟수 (기본: 100)
 --timeout SEC         요청 타임아웃(초, 기본: 10)
 --verbose             디버그 로깅 활성화
