@@ -139,4 +139,20 @@ source venv/bin/activate
 ```bash
 python protect_reveal.py --verbose  # 테스트 실행
 ```
+# 테스트
+
+개발 중 테스트를 실행하려면 가상환경을 만들고 의존성을 설치한 뒤 pytest를 실행하세요:
+
+```bash
+# 가상환경 생성 (권장 이름: .venv)
+python3 -m venv .venv
+source .venv/bin/activate
+
+# 개발 의존성 설치
+python -m pip install --upgrade pip
+pip install -r requirements-dev.txt
+
+# 테스트 실행
+pytest -q
+```
 # CRDP
