@@ -37,7 +37,12 @@ protect/reveal API와 상호작용하는 파이썬 클라이언트 라이브러�
 ### 빠른 설정
 
 ```bash
+# 기본(.venv)로 가상환경 생성 및 의존성 설치
 ./setup.sh
+source .venv/bin/activate
+
+# (선택) 다른 경로를 쓰고 싶다면 환경변수로 지정
+VENV_DIR=venv ./setup.sh
 source venv/bin/activate
 ```
 

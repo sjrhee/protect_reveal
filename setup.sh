@@ -23,30 +23,40 @@ if [ "$(printf '%s\n' "$REQUIRED_VERSION" "$PYTHON_VERSION" | sort -V | head -n1
     exit 1
 fi
 
+# 사용할 가상환경 디렉터리 결정 (기본: .venv; 환경변수 VENV_DIR로 재정의 가능)
+VENV_DIR="${VENV_DIR:-.venv}"
+
 # venv 디렉토리가 있는지 확인
-if [ ! -d "$DIR/venv" ]; then
-    echo "가상 환경 생성 중..."
-    python3 -m venv "$DIR/venv"
+if [ ! -d "$DIR/$VENV_DIR" ]; then
+    echo "가상 환경 생성 중... ($VENV_DIR)"
+    python3 -m venv "$DIR/$VENV_DIR"
 else
-    echo "기존 가상 환경이 발견되었습니다."
+    echo "기존 가상 환경이 발견되었습니다. ($VENV_DIR)"
 fi
 
 # venv 활성화
-source "$DIR/venv/bin/activate"
+set +u
+source "$DIR/$VENV_DIR/bin/activate"
+set -u
 
 # pip 업그레이드
 echo "pip 업그레이드 중..."
 pip install --upgrade pip
 
-# 의존성 설치
 echo "의존성 패키지 설치 중..."
 pip install -r "$DIR/requirements.txt"
+
+# (선택) 개발 의존성 설치
+if [ -f "$DIR/requirements-dev.txt" ]; then
+    echo "개발 의존성 설치 중..."
+    pip install -r "$DIR/requirements-dev.txt"
+fi
 
 echo "
 설정이 완료되었습니다!
 
 가상 환경을 활성화하려면:
-    source venv/bin/activate
+    source $VENV_DIR/bin/activate
 
 스크립트를 실행하려면:
     python protect_reveal.py
