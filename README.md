@@ -99,7 +99,7 @@ Summary:
 Iterations attempted: <총 시도 개수>
 Successful (both 2xx): <성공(둘 다 2xx) 개수>
 Revealed matched original data: <원본과 일치 개수>
-Total time: <전체 소요 시간(s)>
+Total time: <총 소요 시간(s)>
 Average per-iteration time: <반복당 평균 시간(s)>
 ```
 
