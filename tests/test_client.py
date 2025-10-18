@@ -1,5 +1,4 @@
-import pytest
-from protect_reveal.client import ProtectRevealClient, APIResponse
+from protect_reveal.client import APIResponse, ProtectRevealClient
 
 
 def test_extract_protected_list_from_protect_response_simple():

@@ -4,11 +4,11 @@ run_iteration은 제공된 `ProtectRevealClient`를 사용해 protect -> reveal 
 요청을 보내고, 소요 시간과 응답을 담은 `IterationResult`를 반환합니다.
 """
 
+import time
 from dataclasses import dataclass
 from typing import Optional
-import time
 
-from .client import APIResponse, ProtectRevealClient, APIError
+from .client import APIError, APIResponse, ProtectRevealClient
 
 
 @dataclass

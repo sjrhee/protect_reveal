@@ -1,8 +1,7 @@
 """protect_reveal package exports."""
-from .client import ProtectRevealClient, APIResponse, APIError
+from .client import APIError, APIResponse, ProtectRevealClient
+from .runner import BulkIterationResult, IterationResult, run_bulk_iteration, run_iteration
 from .utils import increment_numeric_string
-from .runner import IterationResult, run_iteration
-from .runner import BulkIterationResult, run_bulk_iteration
 
 __all__ = [
     "ProtectRevealClient",

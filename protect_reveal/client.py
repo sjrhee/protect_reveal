@@ -85,7 +85,11 @@ class ProtectRevealClient:
         # include multiple possible keys to match different server implementations
         # protected_data / protected_array keep the old simple list form
         simple_list = [item.get("protected_data") if isinstance(item, dict) else str(item) for item in pda]
-        payload: Dict[str, Any] = {"protection_policy_name": self.policy, "protected_data": simple_list, "protected_array": simple_list}
+        payload: Dict[str, Any] = {
+            "protection_policy_name": self.policy,
+            "protected_data": simple_list,
+            "protected_array": simple_list,
+        }
         payload["protected_data_array"] = pda
         if username:
             payload["username"] = username

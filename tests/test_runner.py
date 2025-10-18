@@ -1,7 +1,5 @@
-import pytest
-import types
+from protect_reveal.client import APIResponse, ProtectRevealClient
 from protect_reveal.runner import run_bulk_iteration
-from protect_reveal.client import ProtectRevealClient, APIResponse
 
 
 class DummyResp(APIResponse):

@@ -1,5 +1,5 @@
+from protect_reveal.client import APIResponse, ProtectRevealClient
 from protect_reveal.runner import run_bulk_iteration
-from protect_reveal.client import ProtectRevealClient, APIResponse
 
 
 def test_run_bulk_iteration_partial_failure(monkeypatch):
@@ -8,7 +8,15 @@ def test_run_bulk_iteration_partial_failure(monkeypatch):
     def fake_protect_bulk(items):
         # first batch returns success, second batch returns an error response
         if items[0] == "001":
-            return APIResponse(status_code=200, body={"protected_data_array": [{"protected_data": "tok1"}, {"protected_data": "tok2"}]})
+            return APIResponse(
+                status_code=200,
+                body={
+                    "protected_data_array": [
+                        {"protected_data": "tok1"},
+                        {"protected_data": "tok2"},
+                    ]
+                },
+            )
         return APIResponse(status_code=500, body={"error": "server error"})
 
     def fake_reveal_bulk(items):
