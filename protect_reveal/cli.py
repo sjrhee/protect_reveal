@@ -3,7 +3,7 @@ import json
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Optional
 
 from .client import APIError, APIResponse, ProtectRevealClient
 from .runner import IterationResult, run_bulk_iteration, run_iteration
@@ -45,13 +45,6 @@ class Config:
         parser.add_argument("--batch-size", default=25, type=int, help="batch size for bulk operations (default 25)")
         args = parser.parse_args(argv)
         return cls(**vars(args))
-
-
-def pretty_json(x: Any) -> str:
-    try:
-        return json.dumps(x, ensure_ascii=False, indent=2)
-    except Exception:
-        return str(x)
 
 
 def main(argv: Optional[list] = None) -> int:
