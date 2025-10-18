@@ -81,35 +81,10 @@ def main(argv: Optional[list] = None) -> int:
             if config.show_bodies:
                 pbody = getattr(b.protect_response, 'body', {}) or {}
                 rbody = getattr(b.reveal_response, 'body', {}) or {}
-                protect_obj = {
-                    "status": pbody.get(
-                        "status",
-                        "Success"
-                        if getattr(b.protect_response, "status_code", None)
-                        and str(getattr(b.protect_response, "status_code", "")).startswith("2")
-                        else "Error",
-                    ),
-                    "total_count": pbody.get("total_count", len(b.inputs)),
-                    "success_count": pbody.get("success_count", len(b.protected_tokens)),
-                    "error_count": pbody.get("error_count", max(0, len(b.inputs) - len(b.protected_tokens))),
-                    "protected_data_array": [{"protected_data": tok} for tok in b.protected_tokens],
-                }
-                reveal_obj = {
-                    "status": rbody.get(
-                        "status",
-                        "Success"
-                        if getattr(b.reveal_response, "status_code", None)
-                        and str(getattr(b.reveal_response, "status_code", "")).startswith("2")
-                        else "Error",
-                    ),
-                    "total_count": rbody.get("total_count", len(b.inputs)),
-                    "success_count": rbody.get("success_count", len(b.restored_values)),
-                    "error_count": rbody.get("error_count", max(0, len(b.inputs) - len(b.restored_values))),
-                    "data_array": [{"data": v} for v in b.restored_values],
-                }
+                # Print raw server response bodies to preserve official schema fields
                 print(
                     json.dumps(
-                        {"batch": idx, "protect": protect_obj, "reveal": reveal_obj, "time_s": b.time_s},
+                        {"batch": idx, "protect": pbody, "reveal": rbody, "time_s": b.time_s},
                         ensure_ascii=False,
                         indent=2,
                     )
@@ -169,35 +144,13 @@ def main(argv: Optional[list] = None) -> int:
                     result.match,
                 )
 
-            # show_bodies: print the same JSON structure as bulk per-batch output
+            # show_bodies: print raw server response bodies to match API docs
             if config.show_bodies:
                 pbody = getattr(result.protect_response, 'body', {}) or {}
                 rbody = getattr(result.reveal_response, 'body', {}) or {}
-                protect_obj = {
-                    "status": pbody.get(
-                        "status",
-                        "Success" if result.protect_response and result.protect_response.is_success else "Error",
-                    ),
-                    "total_count": pbody.get("total_count", 1),
-                    "success_count": pbody.get("success_count", 1 if result.protected_token else 0),
-                    "error_count": pbody.get("error_count", 0 if result.protected_token else 1),
-                    "protected_data_array": (
-                        [{"protected_data": result.protected_token}] if result.protected_token else []
-                    ),
-                }
-                reveal_obj = {
-                    "status": rbody.get(
-                        "status",
-                        "Success" if result.reveal_response and result.reveal_response.is_success else "Error",
-                    ),
-                    "total_count": rbody.get("total_count", 1),
-                    "success_count": rbody.get("success_count", 1 if result.restored is not None else 0),
-                    "error_count": rbody.get("error_count", 0 if result.restored is not None else 1),
-                    "data_array": ([{"data": result.restored}] if result.restored is not None else []),
-                }
                 print(
                     json.dumps(
-                        {"batch": i, "protect": protect_obj, "reveal": reveal_obj, "time_s": result.time_s},
+                        {"batch": i, "protect": pbody, "reveal": rbody, "time_s": result.time_s},
                         ensure_ascii=False,
                         indent=2,
                     )
