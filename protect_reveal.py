@@ -14,9 +14,8 @@ import json
 import logging
 import sys
 import time
-from urllib.parse import urljoin
 
-import requests
+from protect_reveal.client import ProtectRevealClient, APIResponse, APIError, ProtectRevealError
 
 
 # Defaults
@@ -24,31 +23,6 @@ DEFAULT_HOST = "192.168.0.231"
 DEFAULT_PORT = 32082
 DEFAULT_POLICY = "P03"
 DEFAULT_START_DATA = "0123456789123"
-
-
-class ProtectRevealError(Exception):
-    """Base exception class for protect/reveal operations."""
-    pass
-
-
-class APIError(ProtectRevealError):
-    """Exception raised for API related errors."""
-    def __init__(self, message: str, status_code: Optional[int] = None, response: Optional[Any] = None):
-        super().__init__(message)
-        self.status_code = status_code
-        self.response = response
-
-
-@dataclass
-class APIResponse:
-    """Structure holding the API response data."""
-    status_code: Optional[int]
-    body: Any
-    
-    @property
-    def is_success(self) -> bool:
-        """Check if the response indicates success."""
-        return bool(self.status_code and str(self.status_code).startswith('2'))
 
 
 @dataclass
