@@ -115,14 +115,25 @@ def main(argv: Optional[list] = None) -> int:
             if config.show_progress:
                 logger.info("#%03d data=%s time=%.4fs protect_status=%s reveal_status=%s match=%s", i, current, result.time_s, result.protect_response.status_code, result.reveal_response.status_code, result.match)
 
-            # show_bodies is independent of show_progress
+            # show_bodies: print the same JSON structure as bulk per-batch output
             if config.show_bodies:
-                if not config.show_progress:
-                    logger.info("#%03d data=%s", i, current)
-                logger.info("  Sent protect payload:\n%s", pretty_json({"protection_policy_name": config.policy, "data": current}))
-                logger.info("  Received protect body:\n%s", pretty_json(result.protect_response.body))
-                logger.info("  Sent reveal payload:\n%s", pretty_json({"protection_policy_name": config.policy, "protected_data": result.protected_token or ""}))
-                logger.info("  Received reveal body:\n%s", pretty_json(result.reveal_response.body))
+                pbody = getattr(result.protect_response, 'body', {}) or {}
+                rbody = getattr(result.reveal_response, 'body', {}) or {}
+                protect_obj = {
+                    "status": pbody.get("status", "Success" if result.protect_response and result.protect_response.is_success else "Error"),
+                    "total_count": pbody.get("total_count", 1),
+                    "success_count": pbody.get("success_count", 1 if result.protected_token else 0),
+                    "error_count": pbody.get("error_count", 0 if result.protected_token else 1),
+                    "protected_data_array": ([{"protected_data": result.protected_token}] if result.protected_token else []),
+                }
+                reveal_obj = {
+                    "status": rbody.get("status", "Success" if result.reveal_response and result.reveal_response.is_success else "Error"),
+                    "total_count": rbody.get("total_count", 1),
+                    "success_count": rbody.get("success_count", 1 if result.restored is not None else 0),
+                    "error_count": rbody.get("error_count", 0 if result.restored is not None else 1),
+                    "data_array": ([{"data": result.restored}] if result.restored is not None else []),
+                }
+                print(json.dumps({"batch": i, "protect": protect_obj, "reveal": reveal_obj, "time_s": result.time_s}, ensure_ascii=False, indent=2))
 
             try:
                 current = increment_numeric_string(current)
