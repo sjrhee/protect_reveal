@@ -41,6 +41,42 @@ python protect_reveal.py --iterations 10 --show-bodies --show-progress
 
 # 5) JWT 토큰 헤더로 전달
 python protect_reveal.py --auth-bearer "$(cat protect_reveal/token.txt)" --iterations 10
+# protect_reveal
+
+Protect/Reveal API 클라이언트 & CLI. 단건·배치 모두 지원하며, 두 모드의 Summary 형식은 동일합니다.
+
+## 목차
+- 소개(특징)
+- 빠른 시작(Quick Start)
+- 명령행 옵션(표)
+- 출력 예시(요청/응답, Summary)
+- 보안 주의사항
+- 프로젝트 구조
+- 개발/테스트
+
+## 소개(특징)
+- 단건/배치 Protect → Reveal 처리 및 시간 측정
+- HTTP 세션 재사용으로 성능 최적화
+- 견고한 에러 처리(APIError 래핑, 일부 실패에도 진행)
+- `--show-bodies` 시 요청 메타(url/headers/body)와 서버 응답(JSON 원문) 출력
+- 두 모드 모두 동일한 Summary 출력 형식
+
+## 빠른 시작(Quick Start)
+```bash
+# 1) 가상환경과 의존성
+./setup.sh && source .venv/bin/activate
+
+# 2) 기본 실행(단건)
+python protect_reveal.py
+
+# 3) 배치 실행(기본 배치 25)
+python protect_reveal.py --bulk
+
+# 4) 본문/진행 로그 확인
+python protect_reveal.py --iterations 10 --show-bodies --show-progress
+
+# 5) JWT 토큰 헤더로 전달
+python protect_reveal.py --auth-bearer "$(cat protect_reveal/token.txt)" --iterations 10
 
 # 6) JWT 모드 + username 포함(reveal에 username 포함)
 python protect_reveal.py --use-jwt --username alice --auth-bearer "$(cat protect_reveal/token.txt)" --iterations 10
@@ -107,7 +143,7 @@ Average per-iteration time: <반복당 평균 시간(s)>
 - 로그/공유 시 민감 정보가 포함되지 않도록 주의하세요.
 
 ## 프로젝트 구조
-```
+```text
 .
 ├── protect_reveal/             # 패키지 소스 코드
 │   ├── cli.py                  # CLI 엔트리포인트
