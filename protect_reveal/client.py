@@ -60,7 +60,11 @@ class ProtectRevealClient:
     def protect_bulk(self, items: list) -> APIResponse:
         """Send a bulk protect request. Payload: {protection_policy_name, data: [ ... ]}"""
         # include both common and Thales-style keys for compatibility
-        payload = {"protection_policy_name": self.policy, "data": items, "data_array": items}
+        payload = {
+            "protection_policy_name": self.policy,
+            "data": items,
+            "data_array": items,
+        }
         return self.post_json(self.protect_bulk_url, payload)
 
     def reveal_bulk(self, protected_items: list, username: Optional[str] = None) -> APIResponse:

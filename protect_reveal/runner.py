@@ -32,7 +32,10 @@ class IterationResult:
 def run_iteration(client: ProtectRevealClient, data: str) -> IterationResult:
     t0 = time.perf_counter()
 
-    protect_payload = {"protection_policy_name": client.policy, "data": data}
+    protect_payload = {
+        "protection_policy_name": client.policy,
+        "data": data,
+    }
     protect_response = client.post_json(client.protect_url, protect_payload)
 
     protected_token = client.extract_protected_from_protect_response(protect_response)
